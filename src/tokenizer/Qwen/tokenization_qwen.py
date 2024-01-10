@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 VOCAB_FILES_NAMES = {"vocab_file": "qwen.tiktoken"}
 
 PAT_STR = r"""(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\r\n\p{L}\p{N}]?\p{L}+|\p{N}| ?[^\s\p{L}\p{N}]+[\r\n]*|\s*[\r\n]+|\s+(?!\S)|\s+"""
-ENDOFTEXT = "<|endoftext|>"
+ENDOFTEXT = "<|endoftext|>"  #可以充当pad的角色
 IMSTART = "<|im_start|>"
 IMEND = "<|im_end|>"
 # as the default behavior is changed to allow special tokens in
