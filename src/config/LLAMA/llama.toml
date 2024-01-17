@@ -3,7 +3,10 @@ hidden_dim = 768
 intermediate_dim = 1000
 vocab_dim = 123
 head_dim = 64
+layer_num = 2
 [hyperparameter]
+dropout = 0.1
 eps = 1e-8
 lr = 1e-5
 batch_size = 128
+
