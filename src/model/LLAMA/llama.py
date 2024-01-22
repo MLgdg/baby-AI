@@ -21,18 +21,16 @@ class RMSNorm(nn.Module):
 		out = out * self.balanced_distribution
 		return out 
 
-class PEMB():
+#TODO PREMB
+class PREMB():
+	
 
 
 class EMB(nn.Embedding):
 	def __init__(self, config):
-		super(EMB, self).__init__()
 		hidden_dim = config["model"]["hidden_dim"]
 		vocab_dim = config["model"]["vocab_dim"]
-		self.emb = nn.Embedding(vocab_dim, hidden_dim)
-
-	def forward(self, inp):
-		return self.emb(inp)
+		super(EMB, self).__init__(vocab_dim, hidden_dim)
 
 
 class FeedForward(nn.Module):
@@ -55,13 +53,13 @@ class Attenion(nn.Module):
 	def __init__(self, config):
 		super(Attenion, self).__init__()
 		hidden_dim = config["model"]["hidden_dim"]
-		head_dim = config["model"]["head_dim"]
-		self.n_head = hidden_dim // head_dim
+		self.head_dim = config["model"]["head_dim"]
+		self.n_head = hidden_dim // self.head_dim
 		self.qw = nn.Linear(hidden_dim, hidden_dim)
 		self.kw = nn.Linear(hidden_dim, hidden_dim)
 		self.vw = nn.Linear(hidden_dim, hidden_dim)
 		self.ow = nn.Linear(hidden_dim, hidden_dim)
-		assert n_head * head_dim == hidden_dim "fuck error config model hidden_dim,head_dim "
+		assert self.n_head * self.head_dim == hidden_dim, "fuck error config model hidden_dim,head_dim "
 
 	def attention(self, inp, mask):
 		b, s, dim = inp.shape
@@ -75,7 +73,6 @@ class Attenion(nn.Module):
 		out = qk @ v
 		out = out.transpose(1 ,2).contiguous().view(b, s, dim)
 		return self.ow(out) 
-
 
 	def forward(self, inp, mask):
 		return self.attention(inp, mask)
@@ -93,13 +90,11 @@ class TransformerBlock(nn.Module):
 
 	def forward(self, inp, mask):
 		out1 = self.ln1(inp)
-		out1 = self.att(out, mask)
+		out1 = self.att(out1, mask)
 		out1 = out1 + inp
 		out2 = self.ln2(out1)
 		out2 = self.ff(out2)
 		return out1 + out2 
-
-
 
 
 class LLAMA(nn.Module):
@@ -110,24 +105,26 @@ class LLAMA(nn.Module):
 		layer_num = config["model"]["layer_num"]
 		self.emb = EMB(config)
 		self.c = nn.Linear(dim, vocab_dim)
-		self.transformers = nn.Module(TransformerBlock(config) for i in range(layer_num))
+		self.ln = RMSNorm(config)
+		self.trans = nn.ModuleList()
+		for i in range(layer_num):
+			self.trans.append(TransformerBlock(config))
+
+	def forward(self, inp):
+		mask = self.generate_causal_matrix(inp)
+		inp = self.emb(inp)
+		for m in self.trans:
+			inp = m(inp, mask)
+		inp = self.ln(inp)
+		inp = self.c(inp)
+		return inp
 
 	def generate_causal_matrix(self, tokens, start_pos=0):
-		_ seqlen = tokens.shape
+		_, seqlen = tokens.shape
 		start_pos = 0
 		mask = torch.full((1, 1, seqlen, seqlen), float("-inf"), device=tokens.device)
 		mask = torch.triu(mask, diagonal=start_pos + 1)#.type_as(h)
 		return mask
-
-if __name__ == '__main__':
-	
-	config = {"model": {"hidden_dim": 3, "intermediate_dim": 2}, "hyperparameter": {"eps": 1e-6}}
-	RMS = RMSNorm(config)
-	FF = FeedForward(config)
-	test_data = torch.rand(1,2,3)
-	out_data = RMS(test_data)
-	out_data = FF(out_data)
-	print(out_data)
 
 
 
